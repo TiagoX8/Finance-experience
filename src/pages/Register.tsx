@@ -2,8 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "auth-lite-react"
 import { Eye, EyeOff, UserPlus } from "lucide-react"
-
-const API_URL = "http://127.0.0.1:8000"
+import { api, extractErrorMessage } from "../services/api"
 
 export default function Register() {
   const { isAuthenticated, loading: authLoading } = useAuth()
@@ -59,27 +58,11 @@ export default function Register() {
     try {
       setLoading(true)
 
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password,
-        }),
+      await api.post("/auth/register", {
+        name: name.trim(),
+        email: email.trim(),
+        password,
       })
-
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok) {
-        if (typeof data?.detail === "string") {
-          throw new Error(data.detail)
-        }
-
-        throw new Error("Não foi possível criar a conta")
-      }
 
       setSuccess("Conta criada com sucesso. Faça login para continuar.")
 
@@ -93,7 +76,7 @@ export default function Register() {
       }, 1200)
     } catch (err) {
       console.error(err)
-      setError(err instanceof Error ? err.message : "Erro ao cadastrar")
+      setError(extractErrorMessage(err, "Não foi possível criar a conta"))
     } finally {
       setLoading(false)
     }

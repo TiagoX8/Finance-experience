@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState, ReactNode, useCallback } from "react"
 import { useAuth } from "auth-lite-react"
 import { TransactionType } from "./TransactionsContext"
+import { api, isUnauthorized } from "../services/api"
 
 export interface Category {
   id: number
@@ -21,21 +22,12 @@ interface CategoriesContextType {
 
 export const CategoriesContext = createContext<CategoriesContextType | null>(null)
 
-const API_URL = "http://127.0.0.1:8000/categories"
-
 export function CategoriesProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated, loading: authLoading, logout } = useAuth()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-
-  const getAuthHeaders = useCallback(() => {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    }
-  }, [token])
 
 const handleUnauthorized = useCallback(() => {
   setCategories([])
@@ -54,29 +46,21 @@ const handleUnauthorized = useCallback(() => {
       setLoading(true)
       setError("")
 
-      const response = await fetch(`${API_URL}/`, {
-        headers: getAuthHeaders(),
-      })
-
-      if (response.status === 401) {
+      const { data } = await api.get("/categories/")
+      setCategories(data)
+    } catch (err) {
+      if (isUnauthorized(err)) {
         handleUnauthorized()
         return
       }
 
-      if (!response.ok) {
-        throw new Error("Falha ao carregar categorias")
-      }
-
-      const data = await response.json()
-      setCategories(data)
-    } catch (err) {
       console.error(err)
       setCategories([])
       setError("Erro ao carregar categorias")
     } finally {
       setLoading(false)
     }
-  }, [token, isAuthenticated, getAuthHeaders, handleUnauthorized])
+  }, [token, isAuthenticated, handleUnauthorized])
 
   useEffect(() => {
     if (authLoading) return
@@ -92,25 +76,15 @@ const handleUnauthorized = useCallback(() => {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      })
-
-      if (response.status === 401) {
+      const { data: created } = await api.post("/categories/", payload)
+      setCategories((prev) => [...prev, created])
+      return true
+    } catch (err) {
+      if (isUnauthorized(err)) {
         handleUnauthorized()
         return false
       }
 
-      if (!response.ok) {
-        throw new Error("Falha ao adicionar categoria")
-      }
-
-      const created = await response.json()
-      setCategories((prev) => [...prev, created])
-      return true
-    } catch (err) {
       console.error(err)
       setError("Erro ao adicionar categoria")
       return false
@@ -126,25 +100,10 @@ const handleUnauthorized = useCallback(() => {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/${payload.id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: payload.name,
-          type: payload.type,
-        }),
+      const { data: updated } = await api.put(`/categories/${payload.id}`, {
+        name: payload.name,
+        type: payload.type,
       })
-
-      if (response.status === 401) {
-        handleUnauthorized()
-        return false
-      }
-
-      if (!response.ok) {
-        throw new Error("Falha ao atualizar categoria")
-      }
-
-      const updated = await response.json()
 
       setCategories((prev) =>
         prev.map((item) => (item.id === updated.id ? updated : item))
@@ -152,6 +111,11 @@ const handleUnauthorized = useCallback(() => {
 
       return true
     } catch (err) {
+      if (isUnauthorized(err)) {
+        handleUnauthorized()
+        return false
+      }
+
       console.error(err)
       setError("Erro ao atualizar categoria")
       return false
@@ -167,23 +131,16 @@ const handleUnauthorized = useCallback(() => {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      })
-
-      if (response.status === 401) {
-        handleUnauthorized()
-        return false
-      }
-
-      if (!response.ok) {
-        throw new Error("Falha ao excluir categoria")
-      }
+      await api.delete(`/categories/${id}`)
 
       setCategories((prev) => prev.filter((item) => item.id !== id))
       return true
     } catch (err) {
+      if (isUnauthorized(err)) {
+        handleUnauthorized()
+        return false
+      }
+
       console.error(err)
       setError("Erro ao excluir categoria")
       return false

@@ -2,6 +2,7 @@
   "name": "finance-saas",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -9,6 +10,7 @@
   },
   "dependencies": {
     "auth-lite-react": "file:../auth-lite-react",
+    "axios": "^1.7.9",
     "lucide-react": "^1.16.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
