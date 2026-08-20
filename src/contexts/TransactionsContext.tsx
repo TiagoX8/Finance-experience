@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, ReactNode, useCallback } from "react"
 import { useAuth } from "auth-lite-react"
+import { api, isUnauthorized } from "../services/api"
 
 export type TransactionType = "income" | "expense"
 
@@ -25,21 +26,12 @@ interface TransactionContextType {
 
 export const TransactionContext = createContext<TransactionContextType | null>(null)
 
-const API_URL = "http://127.0.0.1:8000/transactions"
-
 export function TransactionProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated, loading: authLoading, logout } = useAuth()
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-
-  const getAuthHeaders = useCallback(() => {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    }
-  }, [token])
 
  const handleUnauthorized = useCallback(() => {
   setTransactions([])
@@ -58,29 +50,21 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError("")
 
-      const response = await fetch(`${API_URL}/`, {
-        headers: getAuthHeaders(),
-      })
-
-      if (response.status === 401) {
+      const { data } = await api.get("/transactions/")
+      setTransactions(data)
+    } catch (err) {
+      if (isUnauthorized(err)) {
         handleUnauthorized()
         return
       }
 
-      if (!response.ok) {
-        throw new Error("Falha ao carregar transações")
-      }
-
-      const data = await response.json()
-      setTransactions(data)
-    } catch (err) {
       console.error(err)
       setTransactions([])
       setError("Erro ao carregar transações")
     } finally {
       setLoading(false)
     }
-  }, [token, isAuthenticated, getAuthHeaders, handleUnauthorized])
+  }, [token, isAuthenticated, handleUnauthorized])
 
   useEffect(() => {
     if (authLoading) return
@@ -96,25 +80,15 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(t),
-      })
-
-      if (response.status === 401) {
+      const { data: created } = await api.post("/transactions/", t)
+      setTransactions((prev) => [created, ...prev])
+      return true
+    } catch (err) {
+      if (isUnauthorized(err)) {
         handleUnauthorized()
         return false
       }
 
-      if (!response.ok) {
-        throw new Error("Falha ao adicionar transação")
-      }
-
-      const created = await response.json()
-      setTransactions((prev) => [created, ...prev])
-      return true
-    } catch (err) {
       console.error(err)
       setError("Erro ao adicionar transação")
       return false
@@ -130,23 +104,16 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      })
-
-      if (response.status === 401) {
-        handleUnauthorized()
-        return false
-      }
-
-      if (!response.ok) {
-        throw new Error("Falha ao deletar transação")
-      }
+      await api.delete(`/transactions/${id}`)
 
       setTransactions((prev) => prev.filter((t) => t.id !== id))
       return true
     } catch (err) {
+      if (isUnauthorized(err)) {
+        handleUnauthorized()
+        return false
+      }
+
       console.error(err)
       setError("Erro ao deletar transação")
       return false
@@ -162,28 +129,16 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     try {
       setError("")
 
-      const response = await fetch(`${API_URL}/${updatedTransaction.id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const { data: updated } = await api.put(
+        `/transactions/${updatedTransaction.id}`,
+        {
           title: updatedTransaction.title,
           category: updatedTransaction.category,
           amount: updatedTransaction.amount,
           type: updatedTransaction.type,
           date: updatedTransaction.date,
-        }),
-      })
-
-      if (response.status === 401) {
-        handleUnauthorized()
-        return false
-      }
-
-      if (!response.ok) {
-        throw new Error("Falha ao atualizar transação")
-      }
-
-      const updated = await response.json()
+        }
+      )
 
       setTransactions((prev) =>
         prev.map((t) => (t.id === updated.id ? updated : t))
@@ -191,6 +146,11 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
       return true
     } catch (err) {
+      if (isUnauthorized(err)) {
+        handleUnauthorized()
+        return false
+      }
+
       console.error(err)
       setError("Erro ao atualizar transação")
       return false
