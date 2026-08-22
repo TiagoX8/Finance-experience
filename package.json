@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "auth-lite-react": "github:TiagoX8/auth-lite-react#63e6dec111dbd8f829fa4db72d980e8c0dc7fa2a",
+    "auth-lite-react": "^1.0.0",
     "axios": "^1.7.9",
     "lucide-react": "^1.16.0",
     "react": "^18.2.0",
