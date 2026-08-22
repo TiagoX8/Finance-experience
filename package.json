@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "auth-lite-react": "file:../auth-lite-react",
+    "auth-lite-react": "^1.0.0",
     "axios": "^1.7.9",
     "lucide-react": "^1.16.0",
     "react": "^18.2.0",
