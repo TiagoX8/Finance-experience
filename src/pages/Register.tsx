@@ -4,6 +4,8 @@ import { useAuth } from "auth-lite-react"
 import { Eye, EyeOff, UserPlus } from "lucide-react"
 import { api, extractErrorMessage } from "../services/api"
 
+const MIN_PASSWORD_LENGTH = 8
+
 export default function Register() {
   const { isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -45,8 +47,8 @@ export default function Register() {
       return
     }
 
-    if (password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres")
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`)
       return
     }
 
@@ -75,7 +77,6 @@ export default function Register() {
         navigate("/login")
       }, 1200)
     } catch (err) {
-      console.error(err)
       setError(extractErrorMessage(err, "Não foi possível criar a conta"))
     } finally {
       setLoading(false)
@@ -163,6 +164,10 @@ export default function Register() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+
+              <p className="text-xs text-gray-500">
+                Pelo menos {MIN_PASSWORD_LENGTH} caracteres.
+              </p>
             </div>
 
             <div className="space-y-2">
